@@ -16,12 +16,8 @@ export const RegistrationService = {
     data: RegistrationRequestBody,
     options?: AuthRequestOptions,
   ) =>
-    serviceRequest<RegistrationDTO>(
-      `${BASE_PATH}/register`,
-      "POST",
-      {
-        ...options,
-        body: data,
-      },
-    ),
+    serviceRequest<RegistrationDTO>(`${BASE_PATH}/register`, "POST", {
+      ...options,
+      body: data,
+    }),
 };

@@ -16,5 +16,7 @@ export const AuthService = {
     }),
 
   login: (data: LoginDTO) =>
-    serviceRequest<LoginResponseDTO>(`${BASE_PATH}/login`, "POST", { body: data }),
+    serviceRequest<LoginResponseDTO>(`${BASE_PATH}/login`, "POST", {
+      body: data,
+    }),
 };

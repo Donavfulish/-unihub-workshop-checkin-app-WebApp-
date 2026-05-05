@@ -21,11 +21,7 @@ export const WorkshopService = {
     }),
 
   getById: (id: string, options?: AuthRequestOptions) =>
-    serviceRequest<WorkshopResponse>(
-      `${BASE_PATH}/${id}`,
-      "GET",
-      options,
-    ),
+    serviceRequest<WorkshopResponse>(`${BASE_PATH}/${id}`, "GET", options),
 
   update: (id: string, data: UpdateWorkshopDTO, options?: AuthRequestOptions) =>
     serviceRequest<WorkshopResponse>(`${BASE_PATH}/${id}`, "PUT", {
