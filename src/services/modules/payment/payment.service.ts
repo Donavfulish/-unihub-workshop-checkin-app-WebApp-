@@ -5,12 +5,9 @@ import type { ApiResponse } from "@/types/api";
 
 const BASE_PATH = "/payments";
 
-export const PAYMENT_ROUTES = {
-  create: `${BASE_PATH}/`,
-} as const;
 export const PaymentService = {
   create: (data: PaymentRequestBody, options?: AuthRequestOptions) =>
-    serviceRequest<PaymentDTO>(PAYMENT_ROUTES.create, "POST", {
+    serviceRequest<PaymentDTO>(`${BASE_PATH}/`, "POST", {
       ...options,
       body: data,
     }),

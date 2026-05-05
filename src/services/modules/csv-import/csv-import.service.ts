@@ -5,12 +5,9 @@ import type { ApiResponse } from "@/types/api";
 
 const BASE_PATH = "/csv-import";
 
-export const CSV_IMPORT_ROUTES = {
-  run: `${BASE_PATH}/run`,
-} as const;
 export const CsvImportService = {
   run: (data: JsonObject, options?: AuthRequestOptions) =>
-    serviceRequest<CsvImportSummary>(CSV_IMPORT_ROUTES.run, "POST", {
+    serviceRequest<CsvImportSummary>(`${BASE_PATH}/run`, "POST", {
       ...options,
       body: data,
     }),

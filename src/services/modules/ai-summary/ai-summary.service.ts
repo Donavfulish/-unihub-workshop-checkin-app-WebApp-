@@ -5,12 +5,9 @@ import type { ApiResponse } from "@/types/api";
 
 const BASE_PATH = "/ai-summary";
 
-export const AI_SUMMARY_ROUTES = {
-  summarizePdf: `${BASE_PATH}/pdf`,
-} as const;
 export const AISummaryService = {
   summarizePdf: (data: JsonObject, options?: AuthRequestOptions) =>
-    serviceRequest<AISummaryResult>(AI_SUMMARY_ROUTES.summarizePdf, "POST", {
+    serviceRequest<AISummaryResult>(`${BASE_PATH}/pdf`, "POST", {
       ...options,
       body: data,
     }),

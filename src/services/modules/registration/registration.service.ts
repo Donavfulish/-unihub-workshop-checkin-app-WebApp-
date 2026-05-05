@@ -5,13 +5,9 @@ import type { ApiResponse } from "@/types/api";
 
 const BASE_PATH = "/registrations";
 
-export const REGISTRATION_ROUTES = {
-  create: `${BASE_PATH}/`,
-  legacyRegister: `${BASE_PATH}/register`,
-} as const;
 export const RegistrationService = {
   create: (data: RegistrationRequestBody, options?: AuthRequestOptions) =>
-    serviceRequest<RegistrationDTO>(REGISTRATION_ROUTES.create, "POST", {
+    serviceRequest<RegistrationDTO>(`${BASE_PATH}/`, "POST", {
       ...options,
       body: data,
     }),
@@ -21,7 +17,7 @@ export const RegistrationService = {
     options?: AuthRequestOptions,
   ) =>
     serviceRequest<RegistrationDTO>(
-      REGISTRATION_ROUTES.legacyRegister,
+      `${BASE_PATH}/register`,
       "POST",
       {
         ...options,
