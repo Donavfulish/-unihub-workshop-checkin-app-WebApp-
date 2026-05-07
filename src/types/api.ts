@@ -1,5 +1,10 @@
+export interface ApiError {
+  message: string;
+  status?: number;
+}
+
 export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  success?: boolean;
+  data: T | null;
+  error?: ApiError | null;
+  meta?: Record<string, unknown> | null;
 }

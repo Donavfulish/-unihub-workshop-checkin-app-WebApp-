@@ -1,26 +1,28 @@
 export interface PaymentDTO {
-  id: string;
-  registrationId?: string;
-  amount: number;
-  currency: string;
-  status: "pending" | "succeeded" | "failed" | "refunded";
-  method?: string;
-  createdAt: string;
+  id: number;
+  registration_id?: number | null;
+  transaction_no?: string | null;
+  idempotency_key?: string | null;
+  amount?: number | string | null;
+  status?: string | null;
+  registration?: {
+    id: number;
+    workshop_id?: number | null;
+    qr_code_hash?: string | null;
+    status?: string | null;
+  } | null;
 }
 
 export interface PaymentRequestBody {
-  registrationId?: string;
+  registrationId: number;
   amount: number;
-  currency: string;
-  method: string;
-  details?: Record<string, unknown>;
+  idempotencyKey?: string;
 }
 
 export interface ProcessPaymentInput {
-  paymentMethod: string;
+  registrationId: number;
   amount: number;
-  currency: string;
-  metadata?: Record<string, unknown>;
+  idempotencyKey?: string;
 }
 
 export interface PaymentIdempotencyRecord<T = unknown> {

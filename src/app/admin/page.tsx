@@ -2,7 +2,6 @@
 
 import { Navbar } from '@/components/navbar'
 import { AdminStatsCard } from '@/components/admin-stats-card'
-import { WorkshopCard } from '@/components/workshop-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Users, BookOpen, DollarSign } from 'lucide-react'
@@ -155,7 +154,15 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {mockWorkshops.slice(0, 3).map((workshop) => (
-                <WorkshopCard key={workshop.id} workshop={workshop} />
+                <Card key={workshop.id}>
+                  <CardContent className="pt-6 space-y-2">
+                    <p className="font-semibold">{workshop.title}</p>
+                    <p className="text-sm text-muted-foreground">{workshop.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {workshop.registered}/{workshop.capacity} registered
+                    </p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </CardContent>

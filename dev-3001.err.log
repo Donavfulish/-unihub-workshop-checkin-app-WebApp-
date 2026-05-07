@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          39672
+- Dir:          E:\DISK D\NOTES FOR CLASS\NAM 3\HOC KY II\SOFTWARE DESIGN\Unihub Workshop - Web and BE\-unihub-workshop-checkin-app-WebApp-
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 39672 /F to stop it.
