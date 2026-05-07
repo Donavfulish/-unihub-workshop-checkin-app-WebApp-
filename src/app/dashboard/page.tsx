@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
+import { useMyWorkshops } from '@/components/my-workshops-provider'
 import { Navbar } from '@/components/navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MOCK_PROFILE } from '@/lib/mock-auth'
-import { loadStoredWorkshopFlows, type StoredWorkshopFlow } from '@/lib/my-workshops-store'
 
 function formatDateTime(value?: string | null) {
   if (!value) {
@@ -16,12 +17,8 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function DashboardPage() {
-  const [items, setItems] = useState<StoredWorkshopFlow[]>([])
+  const { items } = useMyWorkshops()
   const [activeQrWorkshopId, setActiveQrWorkshopId] = useState<number | null>(null)
-
-  useEffect(() => {
-    setItems(loadStoredWorkshopFlows())
-  }, [])
 
   const activeItem = items.find((item) => item.workshop.id === activeQrWorkshopId) ?? null
 
@@ -33,7 +30,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Workshops</h1>
           <p className="text-muted-foreground">
-            Temporary student profile plus workshops captured from successful API registrations.
+            Temporary student profile plus workshops captured from the current API session.
           </p>
         </div>
 
@@ -96,7 +93,7 @@ export default function DashboardPage() {
               ))
             ) : (
               <p className="text-muted-foreground">
-                No registered workshops saved yet.
+                No registered workshops in the current session yet.
               </p>
             )}
           </CardContent>
@@ -107,10 +104,26 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>QR for {activeItem.workshop.title}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md bg-muted p-4 font-mono text-sm break-all">
-                {activeItem.qrCode || 'QR data is not available from the backend response yet.'}
-              </div>
+            <CardContent className="flex flex-col items-center gap-4">
+              {activeItem.qrCode ? (
+                <>
+                  <div className="rounded-lg bg-white p-4 shadow-sm">
+                    <QRCodeCanvas
+                      value={activeItem.qrCode}
+                      size={200}
+                      level="H"
+                      includeMargin
+                    />
+                  </div>
+                  {/* <div className="w-full rounded-md bg-muted p-4 font-mono text-xs break-all text-center">
+                    {activeItem.qrCode}
+                  </div> */}
+                </>
+              ) : (
+                <div className="rounded-md bg-muted p-4 text-sm text-muted-foreground">
+                  QR data is not available from the backend response yet.
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

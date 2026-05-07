@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from 'next-themes'
+import { MyWorkshopsProvider } from '@/components/my-workshops-provider'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -18,8 +19,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          {children}
-          {process.env.NODE_ENV === 'production' && <Analytics />}
+          <MyWorkshopsProvider>
+            {children}
+            {process.env.NODE_ENV === 'production' && <Analytics />}
+          </MyWorkshopsProvider>
         </ThemeProvider>
       </body>
     </html>
