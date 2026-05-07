@@ -1,4 +1,5 @@
-const DEFAULT_BASE_URL = "http://localhost:4000";
+/** Default matches BE `PORT` (see BE `.env.example`). */
+const DEFAULT_BASE_URL = "http://localhost:3000";
 
 export function getBaseUrl(): string {
   const baseUrl =

@@ -15,6 +15,13 @@ export const API_ROUTE_REGISTRY: ApiRouteDefinition[] = [
     method: "POST",
     note: "Public",
   },
+  {
+    module: "auth",
+    basePath: "/auth",
+    route: "/me",
+    method: "GET",
+    note: "Bearer access token",
+  },
 
   {
     module: "workshop",

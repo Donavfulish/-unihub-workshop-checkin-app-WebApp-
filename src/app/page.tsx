@@ -1,26 +1,37 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Navbar } from '@/components/navbar'
 import { WorkshopCard } from '@/components/workshop-card'
 import { Card, CardContent } from '@/components/ui/card'
-import { getMockAccessToken } from '@/lib/mock-auth'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
 import { WorkshopService } from '@/services/modules/workshop/workshop.service'
 import type { WorkshopResponse } from '@/types'
 
 export default function Home() {
+  const { accessToken, isReady } = useAuth()
   const [workshops, setWorkshops] = useState<WorkshopResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!isReady) return
+
     async function loadWorkshops() {
       try {
         setIsLoading(true)
         setError(null)
 
+        if (!accessToken) {
+          setWorkshops([])
+          setError(null)
+          return
+        }
+
         const response = await WorkshopService.list({
-          token: getMockAccessToken(),
+          token: accessToken,
         })
 
         if (response.error) {
@@ -40,11 +51,11 @@ export default function Home() {
     }
 
     void loadWorkshops()
-  }, [])
+  }, [accessToken, isReady])
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole="student" userName="Mock Student" />
+      <Navbar />
 
       <section className="py-12">
         <div className="container mx-auto max-w-6xl px-4 sm:px-6">
@@ -55,7 +66,23 @@ export default function Home() {
             </p>
           </div>
 
-          {isLoading ? (
+          {!accessToken ? (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+                <p className="text-muted-foreground">
+                  Đăng nhập để xem danh sách workshop từ API.
+                </p>
+                <div className="flex gap-2">
+                  <Button asChild>
+                    <Link href="/login">Đăng nhập</Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/register">Đăng ký</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : isLoading ? (
             <Card>
               <CardContent className="pt-6 text-muted-foreground">
                 Loading workshops...

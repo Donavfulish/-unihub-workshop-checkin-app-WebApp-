@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Navbar } from '@/components/navbar'
+import { RouteGuard } from '@/components/route-guard'
 import { WorkshopTable } from '@/components/workshop-table'
 import { WorkshopFormModal } from '@/components/workshop-form-modal'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,8 +46,9 @@ export default function WorkshopManagementPage() {
   }
 
   return (
+    <RouteGuard roles={['admin']}>
     <div className="min-h-screen bg-background">
-      <Navbar userRole="admin" userName="Admin" />
+      <Navbar />
 
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 py-8">
         {/* Header */}
@@ -142,5 +144,6 @@ export default function WorkshopManagementPage() {
         </Card>
       </main>
     </div>
+    </RouteGuard>
   )
 }

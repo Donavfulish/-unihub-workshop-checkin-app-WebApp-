@@ -1,6 +1,7 @@
 'use client'
 
 import { Navbar } from '@/components/navbar'
+import { RouteGuard } from '@/components/route-guard'
 import { AdminStatsCard } from '@/components/admin-stats-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -41,8 +42,9 @@ export default function AdminDashboard() {
   const activeWorkshops = mockWorkshops.filter((w) => w.registered > 0).length
 
   return (
+    <RouteGuard roles={['admin']}>
     <div className="min-h-screen bg-background">
-      <Navbar userRole="admin" userName="Admin" />
+      <Navbar />
 
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 py-8">
         {/* Header */}
@@ -169,5 +171,6 @@ export default function AdminDashboard() {
         </Card>
       </main>
     </div>
+    </RouteGuard>
   )
 }
