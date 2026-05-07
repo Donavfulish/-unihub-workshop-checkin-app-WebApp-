@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { getMockAccessToken } from "@/lib/mock-auth";
+import { useAuth } from "@/contexts/auth-context";
 import { PaymentService } from "@/services/modules/payment/payment.service";
 import { RegistrationService } from "@/services/modules/registration/registration.service";
 import { WorkshopService } from "@/services/modules/workshop/workshop.service";
 import type { PaymentDTO, RegistrationDTO, WorkshopResponse } from "@/types";
+import { useMyWorkshops } from "./my-workshops-provider";
 
 interface WorkshopDetailClientProps {
   workshopId: number;
@@ -41,6 +42,9 @@ export function WorkshopDetailClient({
   workshopId,
 }: WorkshopDetailClientProps) {
   const router = useRouter();
+  const { accessToken, user, isReady } = useAuth();
+  const { getWorkshopFlowByWorkshopId, upsertWorkshopFlow } = useMyWorkshops();
+  const canRegisterOrPay = user?.role === "student";
   const [workshop, setWorkshop] = useState<WorkshopResponse | null>(null);
   const [registration, setRegistration] = useState<RegistrationDTO | null>(null);
   const [payment, setPayment] = useState<PaymentDTO | null>(null);
@@ -51,19 +55,29 @@ export function WorkshopDetailClient({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadData() {
+    if (!isReady) return;
+    if (!accessToken) {
+      setIsLoading(false);
+      router.replace(`/login?next=/workshops/${workshopId}`);
+      return;
+    }
+
+    async function loadWorkshop() {
       try {
         setIsLoading(true);
         setError(null);
 
-        const token = getMockAccessToken();
+        const response = await WorkshopService.getById(String(workshopId), {
+          token: accessToken || undefined,
+        });
+
         const [workshopResponse, registrationsResponse, paymentsResponse] =
           await Promise.all([
-            WorkshopService.getById(String(workshopId), { token }),
-            RegistrationService.listMine({ token }),
-            PaymentService.listMine({ token }),
+            WorkshopService.getById(String(workshopId), { token: accessToken || undefined }),
+            RegistrationService.listMine({ token: accessToken || undefined }),
+            PaymentService.listMine({ token: accessToken || undefined }),
           ]);
-
+          
         if (workshopResponse.error || !workshopResponse.data) {
           throw new Error(workshopResponse.error?.message || "Workshop not found.");
         }
@@ -103,8 +117,8 @@ export function WorkshopDetailClient({
       }
     }
 
-    void loadData();
-  }, [workshopId]);
+    void loadWorkshop();
+  }, [workshopId, accessToken, isReady, router]);
 
   const amount = useMemo(() => {
     if (!workshop?.fee) {
@@ -131,6 +145,11 @@ export function WorkshopDetailClient({
       return;
     }
 
+    if (!accessToken || !canRegisterOrPay) {
+      toast.error("Chỉ tài khoản sinh viên mới có thể đăng ký workshop.");
+      return;
+    }
+
     try {
       setIsRegistering(true);
       const response = await RegistrationService.create(
@@ -138,7 +157,7 @@ export function WorkshopDetailClient({
           workshopId: workshop.id,
           idempotencyKey: createIdempotencyKey("registration"),
         },
-        { token: getMockAccessToken() },
+        { token: accessToken },
       );
 
       if (response.error || !response.data) {
@@ -165,6 +184,11 @@ export function WorkshopDetailClient({
       return;
     }
 
+    if (!accessToken || !canRegisterOrPay) {
+      toast.error("Chỉ tài khoản sinh viên mới có thể thanh toán.");
+      return;
+    }
+
     try {
       setIsPaying(true);
       const response = await PaymentService.create(
@@ -173,7 +197,7 @@ export function WorkshopDetailClient({
           amount,
           idempotencyKey: createIdempotencyKey("payment"),
         },
-        { token: getMockAccessToken() },
+        { token: accessToken },
       );
 
       if (response.error || !response.data) {
@@ -210,7 +234,7 @@ export function WorkshopDetailClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole="student" userName="Mock Student" />
+      <Navbar />
 
       <main className="container mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
@@ -276,22 +300,25 @@ export function WorkshopDetailClient({
                   </div>
                 </div>
 
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-sm text-muted-foreground mb-1">Status</p>
-                  <p className="font-medium">
-                    {workshopStatus === "paid"
-                      ? "Paid"
-                      : workshopStatus === "registered"
-                        ? "Registered but unpaid"
-                        : "Not registered"}
-                  </p>
-                </div>
-
-                {workshopStatus === "not_registered" ? (
-                  <Button onClick={handleRegister} disabled={isRegistering}>
-                    {isRegistering ? "Registering..." : "Register Now"}
-                  </Button>
-                ) : null}
+                {!registration ? (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleRegister}
+                      disabled={isRegistering || !canRegisterOrPay}
+                    >
+                      {isRegistering ? "Registering..." : "Register Now"}
+                    </Button>
+                    {!canRegisterOrPay ? (
+                      <p className="text-sm text-muted-foreground">
+                        Đăng ký workshop chỉ khả dụng với tài khoản vai trò <strong>student</strong>.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-border p-4">
+                    <p className="font-medium">Registration created</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

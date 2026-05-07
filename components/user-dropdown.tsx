@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { LogOut, Settings, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,12 +12,26 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
+export type DropdownUserRole = 'student' | 'admin' | 'staff'
+
 interface UserDropdownProps {
   userName?: string;
-  userRole?: 'student' | 'admin';
+  userRole?: DropdownUserRole;
+  onSignOut?: () => void;
 }
 
-export function UserDropdown({ userName = 'User', userRole = 'student' }: UserDropdownProps) {
+export function UserDropdown({
+  userName = 'User',
+  userRole = 'student',
+  onSignOut,
+}: UserDropdownProps) {
+  const router = useRouter()
+
+  function handleSignOut() {
+    onSignOut?.()
+    router.push('/login')
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -43,7 +58,13 @@ export function UserDropdown({ userName = 'User', userRole = 'student' }: UserDr
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer text-destructive">
+        <DropdownMenuItem
+          className="cursor-pointer text-destructive"
+          onSelect={(e) => {
+            e.preventDefault()
+            handleSignOut()
+          }}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sign out</span>
         </DropdownMenuItem>

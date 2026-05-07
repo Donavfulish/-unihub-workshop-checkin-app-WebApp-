@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetchApiResponse } from "@/lib/api-client";
 import type { ApiResponse } from "@/types/api";
 import type { AuthRequestOptions, JsonObject } from "@/types/http";
 
@@ -17,7 +17,7 @@ export async function serviceRequest<T>(
     headers.Authorization = `Bearer ${options.token}`;
   }
 
-  return apiFetch<ApiResponse<T>>(path, {
+  return apiFetchApiResponse<T>(path, {
     method,
     headers,
     body: options?.body ? JSON.stringify(options.body) : undefined,
