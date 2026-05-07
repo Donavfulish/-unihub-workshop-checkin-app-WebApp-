@@ -5,6 +5,20 @@ export interface RegistrationDTO {
   qr_code_hash?: string | null;
   status?: string | null;
   created_at?: string | null;
+  workshop?: {
+    id: number;
+    title: string;
+    description?: string | null;
+    fee?: number | string | null;
+    total_slots?: number | null;
+    remaining_slots?: number | null;
+    start_time?: string | null;
+    end_time?: string | null;
+  } | null;
+}
+
+export interface RegistrationListResponse {
+  items: RegistrationDTO[];
 }
 
 export interface RegistrationRequestBody {

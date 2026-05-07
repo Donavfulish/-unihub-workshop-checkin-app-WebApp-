@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import { Navbar } from "@/components/navbar";
-import { useMyWorkshops } from "@/components/my-workshops-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,11 +41,8 @@ export function WorkshopDetailClient({
   workshopId,
 }: WorkshopDetailClientProps) {
   const router = useRouter();
-  const { getWorkshopFlowByWorkshopId, upsertWorkshopFlow } = useMyWorkshops();
   const [workshop, setWorkshop] = useState<WorkshopResponse | null>(null);
-  const [registration, setRegistration] = useState<RegistrationDTO | null>(
-    null,
-  );
+  const [registration, setRegistration] = useState<RegistrationDTO | null>(null);
   const [payment, setPayment] = useState<PaymentDTO | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,20 +51,47 @@ export function WorkshopDetailClient({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadWorkshop() {
+    async function loadData() {
       try {
         setIsLoading(true);
         setError(null);
 
-        const response = await WorkshopService.getById(String(workshopId), {
-          token: getMockAccessToken(),
-        });
+        const token = getMockAccessToken();
+        const [workshopResponse, registrationsResponse, paymentsResponse] =
+          await Promise.all([
+            WorkshopService.getById(String(workshopId), { token }),
+            RegistrationService.listMine({ token }),
+            PaymentService.listMine({ token }),
+          ]);
 
-        if (response.error || !response.data) {
-          throw new Error(response.error?.message || "Workshop not found.");
+        if (workshopResponse.error || !workshopResponse.data) {
+          throw new Error(workshopResponse.error?.message || "Workshop not found.");
         }
 
-        setWorkshop(response.data);
+        if (registrationsResponse.error) {
+          throw new Error(registrationsResponse.error.message);
+        }
+
+        if (paymentsResponse.error) {
+          throw new Error(paymentsResponse.error.message);
+        }
+
+        const registrations = registrationsResponse.data?.items ?? [];
+        const payments = paymentsResponse.data?.items ?? [];
+        const currentRegistration =
+          registrations.find((item) => item.workshop_id === workshopId) ?? null;
+        const currentPayment = currentRegistration
+          ? payments.find((item) => item.registration_id === currentRegistration.id) ?? null
+          : null;
+
+        setWorkshop(workshopResponse.data);
+        setRegistration(currentRegistration);
+        setPayment(currentPayment);
+        setQrCode(
+          currentPayment?.registration?.qr_code_hash ??
+            currentRegistration?.qr_code_hash ??
+            null,
+        );
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -80,19 +103,8 @@ export function WorkshopDetailClient({
       }
     }
 
-    void loadWorkshop();
+    void loadData();
   }, [workshopId]);
-
-  useEffect(() => {
-    const storedFlow = getWorkshopFlowByWorkshopId(workshopId);
-    if (!storedFlow) {
-      return;
-    }
-
-    setRegistration(storedFlow.registration);
-    setPayment(storedFlow.payment ?? null);
-    setQrCode(storedFlow.qrCode ?? null);
-  }, [getWorkshopFlowByWorkshopId, workshopId]);
 
   const amount = useMemo(() => {
     if (!workshop?.fee) {
@@ -101,6 +113,18 @@ export function WorkshopDetailClient({
 
     return Number(workshop.fee);
   }, [workshop]);
+
+  const workshopStatus = useMemo(() => {
+    if (payment || registration?.status === "Paid") {
+      return "paid";
+    }
+
+    if (registration) {
+      return "registered";
+    }
+
+    return "not_registered";
+  }, [payment, registration]);
 
   async function handleRegister() {
     if (!workshop) {
@@ -122,11 +146,8 @@ export function WorkshopDetailClient({
       }
 
       setRegistration(response.data);
-      upsertWorkshopFlow({
-        workshop,
-        registration: response.data,
-        qrCode: response.data.qr_code_hash ?? null,
-      });
+      setPayment(null);
+      setQrCode(response.data.qr_code_hash ?? null);
       toast.success("Registration created. Continue to payment.");
     } catch (registerError) {
       toast.error(
@@ -159,26 +180,28 @@ export function WorkshopDetailClient({
         throw new Error(response.error?.message || "Payment failed.");
       }
 
+      const paymentData = response.data;
       const backendQrCode =
-        response.data.registration?.qr_code_hash ??
+        paymentData.registration?.qr_code_hash ??
         registration.qr_code_hash ??
         null;
 
-      setPayment(response.data);
+      setPayment(paymentData);
+      setRegistration((current) =>
+        current
+          ? {
+              ...current,
+              status: paymentData.registration?.status ?? "Paid",
+              qr_code_hash: backendQrCode,
+            }
+          : current,
+      );
       setQrCode(backendQrCode);
-      upsertWorkshopFlow({
-        workshop,
-        registration,
-        payment: response.data,
-        qrCode: backendQrCode,
-      });
 
       toast.success("Payment completed.");
     } catch (paymentError) {
       toast.error(
-        paymentError instanceof Error
-          ? paymentError.message
-          : "Payment failed.",
+        paymentError instanceof Error ? paymentError.message : "Payment failed.",
       );
     } finally {
       setIsPaying(false);
@@ -253,19 +276,26 @@ export function WorkshopDetailClient({
                   </div>
                 </div>
 
-                {!registration ? (
+                <div className="rounded-md border border-border p-4">
+                  <p className="text-sm text-muted-foreground mb-1">Status</p>
+                  <p className="font-medium">
+                    {workshopStatus === "paid"
+                      ? "Paid"
+                      : workshopStatus === "registered"
+                        ? "Registered but unpaid"
+                        : "Not registered"}
+                  </p>
+                </div>
+
+                {workshopStatus === "not_registered" ? (
                   <Button onClick={handleRegister} disabled={isRegistering}>
                     {isRegistering ? "Registering..." : "Register Now"}
                   </Button>
-                ) : (
-                  <div className="rounded-md border border-border p-4">
-                    <p className="font-medium">Registration created</p>
-                  </div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
 
-            {registration && !payment && (
+            {workshopStatus === "registered" && registration && !payment ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Payment</CardTitle>
@@ -283,9 +313,9 @@ export function WorkshopDetailClient({
                   </Button>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            {payment && (
+            {workshopStatus === "paid" && payment ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Payment Result</CardTitle>
@@ -305,9 +335,9 @@ export function WorkshopDetailClient({
                   </p>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            {payment && qrCode && (
+            {workshopStatus === "paid" && qrCode ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-center">Check-in QR</CardTitle>
@@ -321,12 +351,9 @@ export function WorkshopDetailClient({
                       includeMargin
                     />
                   </div>
-                  {/* <div className="w-full rounded-md bg-muted p-4 font-mono text-xs break-all text-center">
-                    {qrCode}
-                  </div> */}
                 </CardContent>
               </Card>
-            )}
+            ) : null}
           </div>
         )}
       </main>

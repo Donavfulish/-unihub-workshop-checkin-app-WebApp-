@@ -10,7 +10,21 @@ export interface PaymentDTO {
     workshop_id?: number | null;
     qr_code_hash?: string | null;
     status?: string | null;
+    workshop?: {
+      id: number;
+      title: string;
+      description?: string | null;
+      fee?: number | string | null;
+      total_slots?: number | null;
+      remaining_slots?: number | null;
+      start_time?: string | null;
+      end_time?: string | null;
+    } | null;
   } | null;
+}
+
+export interface PaymentListResponse {
+  items: PaymentDTO[];
 }
 
 export interface PaymentRequestBody {

@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { useMyWorkshops } from '@/components/my-workshops-provider'
 import { Navbar } from '@/components/navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { MOCK_PROFILE } from '@/lib/mock-auth'
+import { MOCK_PROFILE, getMockAccessToken } from '@/lib/mock-auth'
+import { PaymentService } from '@/services/modules/payment/payment.service'
+import { RegistrationService } from '@/services/modules/registration/registration.service'
+import type { PaymentDTO, RegistrationDTO } from '@/types'
 
 function formatDateTime(value?: string | null) {
   if (!value) {
@@ -17,8 +19,73 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function DashboardPage() {
-  const { items } = useMyWorkshops()
+  const [registrations, setRegistrations] = useState<RegistrationDTO[]>([])
+  const [payments, setPayments] = useState<PaymentDTO[]>([])
   const [activeQrWorkshopId, setActiveQrWorkshopId] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        const token = getMockAccessToken()
+        const [registrationsResponse, paymentsResponse] = await Promise.all([
+          RegistrationService.listMine({ token }),
+          PaymentService.listMine({ token }),
+        ])
+
+        if (registrationsResponse.error) {
+          throw new Error(registrationsResponse.error.message)
+        }
+
+        if (paymentsResponse.error) {
+          throw new Error(paymentsResponse.error.message)
+        }
+
+        setRegistrations(registrationsResponse.data?.items ?? [])
+        setPayments(paymentsResponse.data?.items ?? [])
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Failed to load workshop state.',
+        )
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadData()
+  }, [])
+
+  const items = useMemo(
+    () =>
+      registrations
+        .filter((item) => item.workshop)
+        .map((registration) => {
+          const payment = payments.find(
+            (item) => item.registration_id === registration.id,
+          ) ?? null
+
+          return {
+            registration,
+            payment,
+            workshop: registration.workshop!,
+            status:
+              payment || registration.status === 'Paid'
+                ? 'Paid'
+                : 'Confirmed',
+            qrCode:
+              payment?.registration?.qr_code_hash ??
+              registration.qr_code_hash ??
+              null,
+          }
+        }),
+    [payments, registrations],
+  )
 
   const activeItem = items.find((item) => item.workshop.id === activeQrWorkshopId) ?? null
 
@@ -30,7 +97,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Workshops</h1>
           <p className="text-muted-foreground">
-            Temporary student profile plus workshops captured from the current API session.
+            Real registration and payment state loaded from the backend.
           </p>
         </div>
 
@@ -63,14 +130,21 @@ export default function DashboardPage() {
             <CardTitle>Registered Workshops</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {items.length > 0 ? (
+            {isLoading ? (
+              <p className="text-muted-foreground">Loading workshops...</p>
+            ) : error ? (
+              <p className="text-destructive">{error}</p>
+            ) : items.length > 0 ? (
               items.map((item) => (
                 <div
-                  key={item.workshop.id}
+                  key={item.registration.id}
                   className="flex flex-col gap-3 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="space-y-1">
                     <p className="font-medium">{item.workshop.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Status: {item.status}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       Start: {formatDateTime(item.workshop.start_time)}
                     </p>
@@ -79,54 +153,45 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setActiveQrWorkshopId((current) =>
-                        current === item.workshop.id ? null : item.workshop.id,
-                      )
-                    }
-                  >
-                    View QR
-                  </Button>
+                  {item.status === 'Paid' ? (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setActiveQrWorkshopId((current) =>
+                          current === item.workshop.id ? null : item.workshop.id,
+                        )
+                      }
+                    >
+                      View QR
+                    </Button>
+                  ) : null}
                 </div>
               ))
             ) : (
               <p className="text-muted-foreground">
-                No registered workshops in the current session yet.
+                No workshops found for this account.
               </p>
             )}
           </CardContent>
         </Card>
 
-        {activeItem && (
+        {activeItem?.qrCode ? (
           <Card>
             <CardHeader>
               <CardTitle>QR for {activeItem.workshop.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-              {activeItem.qrCode ? (
-                <>
-                  <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <QRCodeCanvas
-                      value={activeItem.qrCode}
-                      size={200}
-                      level="H"
-                      includeMargin
-                    />
-                  </div>
-                  {/* <div className="w-full rounded-md bg-muted p-4 font-mono text-xs break-all text-center">
-                    {activeItem.qrCode}
-                  </div> */}
-                </>
-              ) : (
-                <div className="rounded-md bg-muted p-4 text-sm text-muted-foreground">
-                  QR data is not available from the backend response yet.
-                </div>
-              )}
+              <div className="rounded-lg bg-white p-4 shadow-sm">
+                <QRCodeCanvas
+                  value={activeItem.qrCode}
+                  size={200}
+                  level="H"
+                  includeMargin
+                />
+              </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
       </main>
     </div>
   )
