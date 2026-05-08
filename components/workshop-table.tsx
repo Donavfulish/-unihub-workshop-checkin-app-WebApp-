@@ -43,6 +43,13 @@ export function WorkshopTable({
 }: WorkshopTableProps) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
+  const truncateDescription = (value: string | undefined | null): string => {
+    if (!value) return "No description";
+    const normalized = value.replace(/\s+/g, " ").trim();
+    if (normalized.length <= 140) return normalized;
+    return `${normalized.slice(0, 140)}...`;
+  };
+
   const handleDelete = (workshopId: string) => {
     setDeleteTarget(null);
     onDelete?.(workshopId);
@@ -94,8 +101,16 @@ export function WorkshopTable({
                       <p className="font-medium text-sm">{workshop.title}</p>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {workshop.description}
+                      <p
+                        className="text-xs text-muted-foreground max-w-[360px] whitespace-pre-wrap break-words"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {truncateDescription(workshop.description)}
                       </p>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">

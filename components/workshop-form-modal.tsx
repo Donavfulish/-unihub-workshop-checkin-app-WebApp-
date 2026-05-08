@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   createWorkshopAction,
@@ -39,6 +39,7 @@ import {
 } from "@/actions/modules/workshop.actions";
 import { getRoomsAction } from "@/actions/modules/room.actions";
 import type { RoomResponse } from "@/types";
+import { getBaseUrl } from "@/lib/env";
 
 const workshopFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -75,6 +76,7 @@ export function WorkshopFormModal({
   const open = typeof openProp === "boolean" ? openProp : internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const [isLoading, setIsLoading] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
 
@@ -147,7 +149,8 @@ export function WorkshopFormModal({
     setIsLoading(true);
     try {
       // Ensure all values are properly serializable
-      const feeValue = typeof values.fee === "number" ? values.fee : undefined;
+      const normalizedFee = Number(values.fee);
+      const feeValue = Number.isFinite(normalizedFee) ? normalizedFee : 0;
       console.log("[workshop-form-modal] Form values:", {
         ...values,
         fee: feeValue,
@@ -200,6 +203,50 @@ export function WorkshopFormModal({
       );
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleSummarizePdf(file: File | null) {
+    if (!file) return;
+    if (!token) {
+      toast.error("Bạn cần đăng nhập để dùng AI Summary");
+      return;
+    }
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Vui lòng chọn file PDF");
+      return;
+    }
+
+    setIsSummarizing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${getBaseUrl()}/ai-summary/pdf/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload?.data?.summary) {
+        toast.error(payload?.error?.message || "Không thể tóm tắt PDF");
+        return;
+      }
+
+      form.setValue("description", payload.data.summary, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+      toast.success("Đã tóm tắt PDF và điền vào Description");
+    } catch (error) {
+      console.error("[workshop-form-modal] summarize pdf failed:", error);
+      toast.error("Không thể tóm tắt PDF");
+    } finally {
+      setIsSummarizing(false);
     }
   }
 
@@ -263,6 +310,38 @@ export function WorkshopFormModal({
                 </FormItem>
               )}
             />
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSummarizing}
+                onClick={() =>
+                  (
+                    document.getElementById(
+                      `workshop-pdf-upload-${mode}-${id || "new"}`,
+                    ) as HTMLInputElement | null
+                  )?.click()
+                }
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {isSummarizing ? "Summarizing..." : "Summarize PDF"}
+              </Button>
+              <input
+                id={`workshop-pdf-upload-${mode}-${id || "new"}`}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  void handleSummarizePdf(file);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Upload file giới thiệu workshop để AI điền mô tả tự động.
+              </p>
+            </div>
 
             {/* Room */}
             <FormField
