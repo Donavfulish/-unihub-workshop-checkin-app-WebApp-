@@ -6,9 +6,10 @@ import { Navbar } from "@/components/navbar";
 import { RouteGuard } from "@/components/route-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MOCK_PROFILE, getMockAccessToken } from "@/lib/mock-auth";
-import { PaymentService } from "@/services/modules/payment/payment.service";
-import { RegistrationService } from "@/services/modules/registration/registration.service";
+import {
+  listMyPaymentsAction,
+  listMyRegistrationsAction,
+} from "@/actions/modules";
 import type { PaymentDTO, RegistrationDTO } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -23,7 +24,7 @@ function formatDateTime(value?: string | null) {
 export default function DashboardPage() {
   const [registrations, setRegistrations] = useState<RegistrationDTO[]>([]);
   const [payments, setPayments] = useState<PaymentDTO[]>([]);
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   //const { items } = useMyWorkshops()
   const [activeQrWorkshopId, setActiveQrWorkshopId] = useState<number | null>(
     null,
@@ -33,14 +34,17 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadData() {
+      if (!accessToken) {
+        setIsLoading(false);
+        return;
+      }
       try {
         setIsLoading(true);
         setError(null);
 
-        const token = getMockAccessToken();
         const [registrationsResponse, paymentsResponse] = await Promise.all([
-          RegistrationService.listMine({ token }),
-          PaymentService.listMine({ token }),
+          listMyRegistrationsAction(accessToken),
+          listMyPaymentsAction(accessToken),
         ]);
 
         if (registrationsResponse.error) {
@@ -65,7 +69,7 @@ export default function DashboardPage() {
     }
 
     void loadData();
-  }, []);
+  }, [accessToken]);
 
   const items = useMemo(
     () =>
@@ -120,19 +124,19 @@ export default function DashboardPage() {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
-                <p className="font-medium">{MOCK_PROFILE.name}</p>
+                <p className="font-medium">{displayName}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium">{MOCK_PROFILE.email}</p>
+                <p className="font-medium">{user?.email || "N/A"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">University</p>
-                <p className="font-medium">{MOCK_PROFILE.university}</p>
+                <p className="text-sm text-muted-foreground">Role</p>
+                <p className="font-medium">{user?.role || "student"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Major</p>
-                <p className="font-medium">{MOCK_PROFILE.major}</p>
+                <p className="text-sm text-muted-foreground">User ID</p>
+                <p className="font-medium">{user?.id || "N/A"}</p>
               </div>
             </CardContent>
           </Card>

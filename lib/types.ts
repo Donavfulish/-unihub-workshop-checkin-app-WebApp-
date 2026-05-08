@@ -9,7 +9,7 @@ export interface Workshop {
   location: string;
   capacity: number;
   registered: number;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  level: "Beginner" | "Intermediate" | "Advanced";
   price: number;
   room_id?: number | null;
   image: string;
@@ -32,7 +32,7 @@ export interface Registration {
   studentId: string;
   workshopId: string;
   registeredAt: string;
-  status: 'active' | 'completed' | 'cancelled';
+  status: "active" | "completed" | "cancelled";
 }
 
 export interface DashboardStats {

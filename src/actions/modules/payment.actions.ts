@@ -9,3 +9,7 @@ export async function createPaymentAction(
 ) {
   return PaymentService.create(payload, { token });
 }
+
+export async function listMyPaymentsAction(token?: string) {
+  return PaymentService.listMine({ token });
+}

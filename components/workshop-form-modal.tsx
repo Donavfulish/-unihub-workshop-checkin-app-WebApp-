@@ -288,7 +288,9 @@ export function WorkshopFormModal({
                     <SelectContent>
                       {rooms.map((room) => (
                         <SelectItem key={room.id} value={String(room.id)}>
-                          {room.name ? `${room.name} (ID: ${room.id})` : `Room ${room.id}`}
+                          {room.name
+                            ? `${room.name} (ID: ${room.id})`
+                            : `Room ${room.id}`}
                           {room.capacity ? ` - ${room.capacity} seats` : ""}
                         </SelectItem>
                       ))}

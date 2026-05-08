@@ -16,3 +16,7 @@ export async function registerLegacyAction(
 ) {
   return RegistrationService.registerLegacy(payload, { token });
 }
+
+export async function listMyRegistrationsAction(token?: string) {
+  return RegistrationService.listMine({ token });
+}

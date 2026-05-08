@@ -1,13 +1,18 @@
 export type CsvRow = Record<string, string>;
 
 export interface CsvImportError {
-  row: number;
-  errors: string[];
+  line: number;
+  raw: string;
+  reason: string;
 }
 
 export interface CsvImportSummary {
-  total: number;
-  success: number;
-  failed: number;
+  filePath: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  duplicatesInFile: number;
+  inserted: number;
+  updated: number;
   errors: CsvImportError[];
 }
