@@ -1,5 +1,6 @@
 export * from "./auth.types";
 export * from "./workshop.types";
+export * from "./room.types";
 export * from "./registration.types";
 export * from "./payment.types";
 export * from "./checkin.types";

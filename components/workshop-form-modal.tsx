@@ -37,17 +37,17 @@ import {
   createWorkshopAction,
   updateWorkshopAction,
 } from "@/actions/modules/workshop.actions";
+import { getRoomsAction } from "@/actions/modules/room.actions";
+import type { RoomResponse } from "@/types";
 
 const workshopFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   start_time: z.string().min(1, "Start time is required"),
   end_time: z.string().min(1, "End time is required"),
+  room_id: z.coerce.number().min(1, "Room is required"),
   total_slots: z.coerce.number().min(1, "Total slots must be at least 1"),
-  fee: z.coerce
-    .number()
-    .min(0, "Fee must be 0 or greater")
-    .default(0),
+  fee: z.coerce.number().min(0, "Fee must be 0 or greater").default(0),
 });
 
 type WorkshopFormValues = z.infer<typeof workshopFormSchema>;
@@ -75,6 +75,8 @@ export function WorkshopFormModal({
   const open = typeof openProp === "boolean" ? openProp : internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const [isLoading, setIsLoading] = useState(false);
+  const [rooms, setRooms] = useState<RoomResponse[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
 
   const form = useForm<WorkshopFormValues>({
     resolver: zodResolver(workshopFormSchema),
@@ -83,20 +85,48 @@ export function WorkshopFormModal({
       description: "",
       start_time: "",
       end_time: "",
+      room_id: 0,
       total_slots: 30,
       fee: 0,
     },
   });
 
+  useEffect(() => {
+    const loadRooms = async () => {
+      if (!open) return;
+
+      setRoomsLoading(true);
+      try {
+        const result = await getRoomsAction(token || undefined);
+        if (result?.data?.rooms && Array.isArray(result.data.rooms)) {
+          setRooms(result.data.rooms);
+        } else {
+          setRooms([]);
+        }
+      } catch (error) {
+        console.error("[workshop-form-modal] Error loading rooms:", error);
+        setRooms([]);
+      } finally {
+        setRoomsLoading(false);
+      }
+    };
+
+    loadRooms();
+  }, [open, token]);
+
   // Reset form values when initialValues changes (for edit mode)
   useEffect(() => {
     if (mode === "edit" && initialValues && open) {
-      console.log("[workshop-form-modal] Resetting form with initialValues:", initialValues);
+      console.log(
+        "[workshop-form-modal] Resetting form with initialValues:",
+        initialValues,
+      );
       form.reset({
         title: initialValues.title ?? "",
         description: initialValues.description ?? "",
         start_time: initialValues.start_time ?? "",
         end_time: initialValues.end_time ?? "",
+        room_id: initialValues.room_id ?? 0,
         total_slots: initialValues.total_slots ?? 30,
         fee: initialValues.fee ?? 0,
       });
@@ -106,6 +136,7 @@ export function WorkshopFormModal({
         description: "",
         start_time: "",
         end_time: "",
+        room_id: 0,
         total_slots: 30,
         fee: 0,
       });
@@ -117,8 +148,11 @@ export function WorkshopFormModal({
     try {
       // Ensure all values are properly serializable
       const feeValue = typeof values.fee === "number" ? values.fee : undefined;
-      console.log("[workshop-form-modal] Form values:", { ...values, fee: feeValue });
-      
+      console.log("[workshop-form-modal] Form values:", {
+        ...values,
+        fee: feeValue,
+      });
+
       const payload = {
         title: String(values.title),
         description: String(values.description),
@@ -127,6 +161,7 @@ export function WorkshopFormModal({
         remaining_slots: Number(values.total_slots),
         start_time: String(values.start_time),
         end_time: String(values.end_time),
+        room_id: Number(values.room_id),
       };
 
       console.log("[workshop-form-modal] Payload to send:", payload);
@@ -224,6 +259,44 @@ export function WorkshopFormModal({
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Room */}
+            <FormField
+              control={form.control}
+              name="room_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Room</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(Number(value))}
+                    value={field.value ? String(field.value) : ""}
+                    disabled={roomsLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            roomsLoading ? "Loading rooms..." : "Select a room"
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {rooms.map((room) => (
+                        <SelectItem key={room.id} value={String(room.id)}>
+                          {room.name ? `${room.name} (ID: ${room.id})` : `Room ${room.id}`}
+                          {room.capacity ? ` - ${room.capacity} seats` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Choose a room from the backend room list.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

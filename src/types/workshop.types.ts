@@ -34,6 +34,7 @@ export interface CreateWorkshopDTO {
   remaining_slots?: number | null;
   start_time?: string | null;
   end_time?: string | null;
+  room_id?: number | null;
 }
 
 export type UpdateWorkshopDTO = Partial<CreateWorkshopDTO>;

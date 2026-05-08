@@ -38,7 +38,7 @@ export async function apiFetchApiResponse<T>(
 ): Promise<ApiResponse<T>> {
   const baseUrl = getBaseUrl();
   const fullUrl = `${baseUrl}${normalizePath(path)}`;
-  
+
   const headers = init?.headers as Record<string, string> | undefined;
   console.log("[apiFetchApiResponse]", {
     method: init?.method || "GET",
@@ -71,7 +71,11 @@ export async function apiFetchApiResponse<T>(
   try {
     parsed = await response.json();
   } catch {
-    console.error("[apiFetchApiResponse] Failed to parse response:", response.status, response.statusText);
+    console.error(
+      "[apiFetchApiResponse] Failed to parse response:",
+      response.status,
+      response.statusText,
+    );
     return {
       data: null,
       error: {
@@ -92,7 +96,9 @@ export async function apiFetchApiResponse<T>(
       data: null,
       error: {
         message:
-          typeof envelope === "object" && envelope !== null && "message" in envelope
+          typeof envelope === "object" &&
+          envelope !== null &&
+          "message" in envelope
             ? String((envelope as { message?: string }).message)
             : response.statusText,
         status: response.status,

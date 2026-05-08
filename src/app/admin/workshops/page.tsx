@@ -41,17 +41,15 @@ export default function WorkshopManagementPage() {
         // Convert API response to Workshop format if needed
         const formattedWorkshops = result.data.workshops.map((w: any) => ({
           ...w,
-          category: w.category || "General",
-          instructor: w.instructor || "TBD",
           date: new Date(w.start_time || Date.now()).toLocaleDateString(),
           time: new Date(w.start_time || Date.now()).toLocaleTimeString(),
           location: w.location || "Online",
-          level: w.level || ("Beginner" as const),
           registered: w.total_slots
             ? w.total_slots - (w.remaining_slots || 0)
             : 0,
           capacity: w.total_slots || 0,
           price: typeof w.fee === "number" ? w.fee : 0,
+          room_id: w.room_id ?? null,
           image: w.image || "/default-workshop.jpg",
           aiSummary: w.aiSummary || "",
           syllabus: w.syllabus || "",
@@ -82,10 +80,10 @@ export default function WorkshopManagementPage() {
       try {
         const date = new Date(isoString);
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
         return `${year}-${month}-${day}T${hours}:${minutes}`;
       } catch {
         return "";
@@ -98,6 +96,7 @@ export default function WorkshopManagementPage() {
       description: workshop.description || "",
       start_time: formatDatetimeLocal((workshop as any).start_time),
       end_time: formatDatetimeLocal((workshop as any).end_time),
+      room_id: (workshop as any).room_id ?? 0,
       total_slots: workshop.capacity,
       fee: workshop.price,
     });
@@ -143,7 +142,7 @@ export default function WorkshopManagementPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="ml-auto">
-                  <WorkshopFormModal 
+                  <WorkshopFormModal
                     onSuccess={loadWorkshops}
                     token={accessToken || undefined}
                   />

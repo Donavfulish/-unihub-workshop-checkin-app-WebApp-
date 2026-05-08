@@ -11,6 +11,7 @@ export interface Workshop {
   registered: number;
   level: 'Beginner' | 'Intermediate' | 'Advanced';
   price: number;
+  room_id?: number | null;
   image: string;
   aiSummary: string;
   syllabus: string;
