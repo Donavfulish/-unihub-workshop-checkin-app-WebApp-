@@ -11,11 +11,22 @@ export async function createWorkshopAction(
   payload: CreateWorkshopDTO,
   token?: string,
 ) {
-  return WorkshopService.create(payload, { token });
+  try {
+    const result = await WorkshopService.create(payload, { token });
+    console.log("[createWorkshopAction] Success:", result);
+    return result;
+  } catch (error) {
+    console.error("[createWorkshopAction] Error:", error);
+    throw error;
+  }
 }
 
 export async function getWorkshopByIdAction(id: string, token?: string) {
   return WorkshopService.getById(id, { token });
+}
+
+export async function getWorkshopStatsAction(token?: string) {
+  return WorkshopService.stats({ token });
 }
 
 export async function updateWorkshopAction(

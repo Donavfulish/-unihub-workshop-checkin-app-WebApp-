@@ -16,6 +16,16 @@ export interface WorkshopsListResponse {
   total: number;
 }
 
+export interface WorkshopStatsResponse {
+  ongoing_workshops: Array<{
+    id: number;
+    title: string;
+    registered: number;
+    total_slots?: number | null;
+  }>;
+  total_registrations: number;
+}
+
 export interface CreateWorkshopDTO {
   title: string;
   description?: string | null;

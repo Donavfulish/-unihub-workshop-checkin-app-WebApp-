@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -21,85 +21,172 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Plus } from 'lucide-react'
-import { toast } from 'sonner'
+} from "@/components/ui/select";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import {
+  createWorkshopAction,
+  updateWorkshopAction,
+} from "@/actions/modules/workshop.actions";
 
 const workshopFormSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  category: z.string().min(1, 'Please select a category'),
-  level: z.enum(['Beginner', 'Intermediate', 'Advanced']),
-  instructor: z.string().min(2, 'Instructor name is required'),
-  date: z.string().min(1, 'Date is required'),
-  time: z.string().min(1, 'Time is required'),
-  location: z.string().min(2, 'Location is required'),
-  capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
-  price: z.coerce.number().min(0, 'Price must be 0 or greater'),
-})
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  start_time: z.string().min(1, "Start time is required"),
+  end_time: z.string().min(1, "End time is required"),
+  total_slots: z.coerce.number().min(1, "Total slots must be at least 1"),
+  fee: z.coerce
+    .number()
+    .min(0, "Fee must be 0 or greater")
+    .default(0),
+});
 
-type WorkshopFormValues = z.infer<typeof workshopFormSchema>
+type WorkshopFormValues = z.infer<typeof workshopFormSchema>;
 
 interface WorkshopFormModalProps {
   onSuccess?: () => void;
+  initialValues?: Partial<WorkshopFormValues>;
+  mode?: "create" | "edit";
+  id?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  token?: string;
 }
 
-export function WorkshopFormModal({ onSuccess }: WorkshopFormModalProps) {
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+export function WorkshopFormModal({
+  onSuccess,
+  initialValues,
+  mode = "create",
+  id,
+  open: openProp,
+  onOpenChange,
+  token,
+}: WorkshopFormModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = typeof openProp === "boolean" ? openProp : internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<WorkshopFormValues>({
     resolver: zodResolver(workshopFormSchema),
     defaultValues: {
-      title: '',
-      category: '',
-      level: 'Beginner',
-      instructor: '',
-      date: '',
-      time: '',
-      location: '',
-      capacity: 30,
-      price: 49,
+      title: "",
+      description: "",
+      start_time: "",
+      end_time: "",
+      total_slots: 30,
+      fee: 0,
     },
-  })
+  });
+
+  // Reset form values when initialValues changes (for edit mode)
+  useEffect(() => {
+    if (mode === "edit" && initialValues && open) {
+      console.log("[workshop-form-modal] Resetting form with initialValues:", initialValues);
+      form.reset({
+        title: initialValues.title ?? "",
+        description: initialValues.description ?? "",
+        start_time: initialValues.start_time ?? "",
+        end_time: initialValues.end_time ?? "",
+        total_slots: initialValues.total_slots ?? 30,
+        fee: initialValues.fee ?? 0,
+      });
+    } else if (mode === "create" && open) {
+      form.reset({
+        title: "",
+        description: "",
+        start_time: "",
+        end_time: "",
+        total_slots: 30,
+        fee: 0,
+      });
+    }
+  }, [initialValues, open, mode, form]);
 
   async function onSubmit(values: WorkshopFormValues) {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Ensure all values are properly serializable
+      const feeValue = typeof values.fee === "number" ? values.fee : undefined;
+      console.log("[workshop-form-modal] Form values:", { ...values, fee: feeValue });
       
-      toast.success(`Workshop "${values.title}" created successfully!`)
-      form.reset()
-      setOpen(false)
-      onSuccess?.()
+      const payload = {
+        title: String(values.title),
+        description: String(values.description),
+        fee: feeValue,
+        total_slots: Number(values.total_slots),
+        remaining_slots: Number(values.total_slots),
+        start_time: String(values.start_time),
+        end_time: String(values.end_time),
+      };
+
+      console.log("[workshop-form-modal] Payload to send:", payload);
+
+      let result: any;
+      if (mode === "edit" && id) {
+        result = await updateWorkshopAction(id, payload, token || undefined);
+      } else {
+        result = await createWorkshopAction(payload, token || undefined);
+      }
+
+      // Check if response has data (success) or error
+      if (result?.data) {
+        toast.success(
+          mode === "edit"
+            ? `Workshop "${values.title}" updated successfully!`
+            : `Workshop "${values.title}" created successfully!`,
+        );
+        form.reset();
+        setOpen(false);
+        onSuccess?.();
+      } else {
+        toast.error(
+          result?.error?.message ||
+            (mode === "edit"
+              ? "Failed to update workshop."
+              : "Failed to create workshop."),
+        );
+      }
     } catch (error) {
-      toast.error('Failed to create workshop. Please try again.')
+      console.error("Error creating workshop:", error);
+      toast.error(
+        mode === "edit"
+          ? "Failed to update workshop. Please try again."
+          : "Failed to create workshop. Please try again.",
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Workshop
-        </Button>
-      </DialogTrigger>
+      {!openProp && mode === "create" && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Workshop
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Workshop</DialogTitle>
+          <DialogTitle>
+            {mode === "edit" ? "Edit Workshop" : "Create New Workshop"}
+          </DialogTitle>
           <DialogDescription>
-            Add a new workshop to the platform. Fill in the details below.
+            {mode === "edit"
+              ? "Update workshop details and save changes."
+              : "Add a new workshop to the platform. Fill in the details below."}
           </DialogDescription>
         </DialogHeader>
 
@@ -113,90 +200,45 @@ export function WorkshopFormModal({ onSuccess }: WorkshopFormModalProps) {
                 <FormItem>
                   <FormLabel>Workshop Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Advanced React Patterns" {...field} />
+                    <Input
+                      placeholder="e.g., Advanced React Patterns"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Category and Level */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Web Development">Web Development</SelectItem>
-                        <SelectItem value="Data Science">Data Science</SelectItem>
-                        <SelectItem value="Design">Design</SelectItem>
-                        <SelectItem value="Cloud Computing">Cloud Computing</SelectItem>
-                        <SelectItem value="Mobile Development">Mobile Development</SelectItem>
-                        <SelectItem value="Security">Security</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="level"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Level</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Instructor */}
+            {/* Description */}
             <FormField
               control={form.control}
-              name="instructor"
+              name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Instructor Name</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Dr. Sarah Chen" {...field} />
+                    <Textarea
+                      placeholder="Describe the workshop, topics covered, and learning outcomes..."
+                      className="resize-none"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Date and Time */}
+            {/* Start Time and End Time */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="date"
+                name="start_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>Start Time</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="datetime-local" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -205,12 +247,12 @@ export function WorkshopFormModal({ onSuccess }: WorkshopFormModalProps) {
 
               <FormField
                 control={form.control}
-                name="time"
+                name="end_time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Time</FormLabel>
+                    <FormLabel>End Time</FormLabel>
                     <FormControl>
-                      <Input placeholder="14:00 - 16:00" {...field} />
+                      <Input type="datetime-local" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -218,33 +260,20 @@ export function WorkshopFormModal({ onSuccess }: WorkshopFormModalProps) {
               />
             </div>
 
-            {/* Location */}
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Innovation Hub 201" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Capacity and Price */}
+            {/* Total Slots and Fee */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="capacity"
+                name="total_slots"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Capacity</FormLabel>
+                    <FormLabel>Total Slots</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" placeholder="30" {...field} />
                     </FormControl>
-                    <FormDescription>Maximum number of participants</FormDescription>
+                    <FormDescription>
+                      Maximum number of participants
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -252,13 +281,21 @@ export function WorkshopFormModal({ onSuccess }: WorkshopFormModalProps) {
 
               <FormField
                 control={form.control}
-                name="price"
+                name="fee"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price ($)</FormLabel>
+                    <FormLabel>Fee ($)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="49" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        step="0.01"
+                        {...field}
+                      />
                     </FormControl>
+                    <FormDescription>
+                      Leave as 0 for free workshops
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -276,12 +313,18 @@ export function WorkshopFormModal({ onSuccess }: WorkshopFormModalProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Creating...' : 'Create Workshop'}
+                {isLoading
+                  ? mode === "edit"
+                    ? "Saving..."
+                    : "Creating..."
+                  : mode === "edit"
+                    ? "Save Changes"
+                    : "Create Workshop"}
               </Button>
             </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

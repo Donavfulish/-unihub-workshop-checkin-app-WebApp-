@@ -58,34 +58,37 @@ export function WorkshopTable({ workshops, onEdit, onDelete }: WorkshopTableProp
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>Title</TableHead>
-              <TableHead className="hidden md:table-cell">Category</TableHead>
-              <TableHead className="hidden lg:table-cell">Instructor</TableHead>
-              <TableHead className="text-center">Level</TableHead>
-              <TableHead className="text-center">Registered</TableHead>
+              <TableHead className="hidden md:table-cell">Description</TableHead>
+              <TableHead className="hidden lg:table-cell">Start Time</TableHead>
+              <TableHead className="hidden lg:table-cell">End Time</TableHead>
+              <TableHead className="text-center">Slots</TableHead>
               <TableHead className="text-right">Price</TableHead>
               <TableHead className="text-center w-10">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {workshops.length > 0 ? (
-              workshops.map((workshop) => (
+              workshops.map((workshop) => {
+                const startTime = (workshop as any).start_time 
+                  ? new Date((workshop as any).start_time).toLocaleString('vi-VN')
+                  : 'N/A';
+                const endTime = (workshop as any).end_time
+                  ? new Date((workshop as any).end_time).toLocaleString('vi-VN')
+                  : 'N/A';
+                  
+                return (
                 <TableRow key={workshop.id} className="hover:bg-muted/50">
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{workshop.title}</p>
-                      <p className="text-xs text-muted-foreground">{workshop.date}</p>
-                    </div>
+                    <p className="font-medium text-sm">{workshop.title}</p>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    <Badge variant="secondary">{workshop.category}</Badge>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{workshop.description}</p>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    <p className="text-sm">{workshop.instructor}</p>
+                    <p className="text-sm">{startTime}</p>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Badge className={`text-xs ${levelColors[workshop.level]}`}>
-                      {workshop.level}
-                    </Badge>
+                  <TableCell className="hidden lg:table-cell">
+                    <p className="text-sm">{endTime}</p>
                   </TableCell>
                   <TableCell className="text-center">
                     <p className="text-sm font-medium">
@@ -122,7 +125,8 @@ export function WorkshopTable({ workshops, onEdit, onDelete }: WorkshopTableProp
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">

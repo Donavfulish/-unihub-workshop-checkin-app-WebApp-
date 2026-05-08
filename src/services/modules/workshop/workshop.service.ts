@@ -35,4 +35,6 @@ export const WorkshopService = {
       "DELETE",
       options,
     ),
+  stats: (options?: AuthRequestOptions) =>
+    serviceRequest<any>(`${BASE_PATH}/stats`, "GET", options),
 };
