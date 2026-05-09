@@ -12,6 +12,7 @@ import {
 } from "@/actions/modules";
 import type { PaymentDTO, RegistrationDTO } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
+import { useMyWorkshops } from "@/components/my-workshops-provider";
 
 function formatDateTime(value?: string | null) {
   if (!value) {
@@ -25,7 +26,7 @@ export default function DashboardPage() {
   const [registrations, setRegistrations] = useState<RegistrationDTO[]>([]);
   const [payments, setPayments] = useState<PaymentDTO[]>([]);
   const { user, accessToken } = useAuth();
-  //const { items } = useMyWorkshops()
+  const { items: workshopFlows } = useMyWorkshops();
   const [activeQrWorkshopId, setActiveQrWorkshopId] = useState<number | null>(
     null,
   );
@@ -72,8 +73,8 @@ export default function DashboardPage() {
   }, [accessToken]);
 
   const items = useMemo(
-    () =>
-      registrations
+    () => {
+      const backendItems = registrations
         .filter((item) => item.workshop)
         .map((registration) => {
           const payment =
@@ -83,6 +84,7 @@ export default function DashboardPage() {
           return {
             registration,
             payment,
+            reservation: null,
             workshop: registration.workshop!,
             status:
               payment || registration.status === "Paid" ? "Paid" : "Confirmed",
@@ -91,8 +93,23 @@ export default function DashboardPage() {
               registration.qr_code_hash ??
               null,
           };
-        }),
-    [payments, registrations],
+        });
+
+      const activeReservations = workshopFlows
+        .filter((flow) => flow.reservation && !flow.registration && !flow.payment)
+        .filter((flow) => !backendItems.some((item) => item.workshop.id === flow.workshop.id))
+        .map((flow) => ({
+          registration: null,
+          payment: null,
+          reservation: flow.reservation,
+          workshop: flow.workshop,
+          status: "Held",
+          qrCode: null,
+        }));
+
+      return [...activeReservations, ...backendItems];
+    },
+    [payments, registrations, workshopFlows],
   );
 
   const activeItem =
@@ -159,7 +176,7 @@ export default function DashboardPage() {
                     <div className="space-y-1">
                       <p className="font-medium">{item.workshop.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        Status: {item.status}
+                        Status: {item.status === "Held" ? "Đang giữ vé" : item.status}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Start: {formatDateTime(item.workshop.start_time)}

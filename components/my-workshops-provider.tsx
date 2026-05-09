@@ -2,13 +2,18 @@
 
 import {
   createContext,
+  useEffect,
   useCallback,
   useContext,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import type { StoredWorkshopFlow } from "@/lib/my-workshops-store";
+import {
+  readStoredWorkshopFlows,
+  writeStoredWorkshopFlows,
+  type StoredWorkshopFlow,
+} from "@/lib/my-workshops-store";
 
 interface MyWorkshopsContextValue {
   items: StoredWorkshopFlow[];
@@ -19,7 +24,13 @@ interface MyWorkshopsContextValue {
 const MyWorkshopsContext = createContext<MyWorkshopsContextValue | null>(null);
 
 export function MyWorkshopsProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<StoredWorkshopFlow[]>([]);
+  const [items, setItems] = useState<StoredWorkshopFlow[]>(() =>
+    readStoredWorkshopFlows(),
+  );
+
+  useEffect(() => {
+    writeStoredWorkshopFlows(items);
+  }, [items]);
 
   const upsertWorkshopFlow = useCallback((item: StoredWorkshopFlow) => {
     setItems((current) => {
@@ -34,7 +45,7 @@ export function MyWorkshopsProvider({ children }: { children: ReactNode }) {
 
   const getWorkshopFlowByWorkshopId = useCallback(
     (workshopId: number) =>
-      items.find((item) => item.workshop.id === workshopId),
+      items.find((item) => Number(item.workshop.id) === Number(workshopId)),
     [items],
   );
 

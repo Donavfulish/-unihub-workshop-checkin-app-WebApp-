@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { PaymentService } from "@/services/modules/payment/payment.service";
 import { RegistrationService } from "@/services/modules/registration/registration.service";
 import { WorkshopService } from "@/services/modules/workshop/workshop.service";
+import type { StoredWorkshopFlow } from "@/lib/my-workshops-store";
 import type { PaymentDTO, RegistrationDTO, ReservationResponse, WorkshopResponse } from "@/types";
 import { useMyWorkshops } from "./my-workshops-provider";
 
@@ -36,6 +37,15 @@ function createIdempotencyKey(prefix: string) {
   }
 
   return `${prefix}-${Date.now()}`;
+}
+
+function isActiveReservation(reservation: ReservationResponse | null | undefined) {
+  if (!reservation?.expiresAt) return false;
+
+  const expiresAt = new Date(reservation.expiresAt).getTime();
+  if (Number.isNaN(expiresAt)) return false;
+
+  return expiresAt > Date.now();
 }
 
 export function WorkshopDetailClient({
@@ -69,18 +79,17 @@ export function WorkshopDetailClient({
       try {
         setIsLoading(true);
         setError(null);
-
-        const response = await WorkshopService.getById(String(workshopId), {
-          token: accessToken || undefined,
-        });
+        const cachedFlow = getWorkshopFlowByWorkshopId(workshopId);
 
         const [workshopResponse, registrationsResponse, paymentsResponse] =
           await Promise.all([
-            WorkshopService.getById(String(workshopId), { token: accessToken || undefined }),
+            WorkshopService.getById(String(workshopId), {
+              token: accessToken || undefined,
+            }),
             RegistrationService.listMine({ token: accessToken || undefined }),
             PaymentService.listMine({ token: accessToken || undefined }),
           ]);
-          
+
         if (workshopResponse.error || !workshopResponse.data) {
           throw new Error(workshopResponse.error?.message || "Workshop not found.");
         }
@@ -96,19 +105,40 @@ export function WorkshopDetailClient({
         const registrations = registrationsResponse.data?.items ?? [];
         const payments = paymentsResponse.data?.items ?? [];
         const currentRegistration =
-          registrations.find((item) => item.workshop_id === workshopId) ?? null;
+          registrations.find((item) => Number(item.workshop_id) === workshopId) ??
+          cachedFlow?.registration ??
+          null;
         const currentPayment = currentRegistration
           ? payments.find((item) => item.registration_id === currentRegistration.id) ?? null
-          : null;
+          : cachedFlow?.payment ?? null;
+        const currentReservation =
+          currentRegistration || currentPayment || !isActiveReservation(cachedFlow?.reservation)
+            ? null
+            : cachedFlow?.reservation ?? null;
 
         setWorkshop(workshopResponse.data);
         setRegistration(currentRegistration);
         setPayment(currentPayment);
+        setReservation(currentReservation);
         setQrCode(
           currentPayment?.registration?.qr_code_hash ??
             currentRegistration?.qr_code_hash ??
+            cachedFlow?.qrCode ??
             null,
         );
+
+        const nextFlow: StoredWorkshopFlow = {
+          workshop: workshopResponse.data,
+          reservation: currentReservation,
+          registration: currentRegistration,
+          payment: currentPayment,
+          qrCode:
+            currentPayment?.registration?.qr_code_hash ??
+            currentRegistration?.qr_code_hash ??
+            cachedFlow?.qrCode ??
+            null,
+        };
+        upsertWorkshopFlow(nextFlow);
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -168,8 +198,16 @@ export function WorkshopDetailClient({
       }
 
       setReservation(response.data);
+      setRegistration(null);
       setPayment(null);
       setQrCode(null);
+      upsertWorkshopFlow({
+        workshop,
+        reservation: response.data,
+        registration: null,
+        payment: null,
+        qrCode: null,
+      });
       toast.success(
         `Đã giữ chỗ. Vui lòng thanh toán trước ${new Date(
           response.data.expiresAt,
@@ -221,13 +259,22 @@ export function WorkshopDetailClient({
       const registrationsResponse = await RegistrationService.listMine({
         token: accessToken || undefined,
       });
+      let nextRegistration: RegistrationDTO | null = null;
       if (!registrationsResponse.error) {
         const registrations = registrationsResponse.data?.items ?? [];
         const currentRegistration =
-          registrations.find((item) => item.workshop_id === workshopId) ?? null;
+          registrations.find((item) => Number(item.workshop_id) === workshopId) ?? null;
+        nextRegistration = currentRegistration;
         setRegistration(currentRegistration);
       }
       setQrCode(backendQrCode);
+      upsertWorkshopFlow({
+        workshop,
+        reservation: null,
+        registration: nextRegistration ?? registration,
+        payment: paymentData,
+        qrCode: backendQrCode,
+      });
 
       toast.success("Payment completed.");
     } catch (paymentError) {
