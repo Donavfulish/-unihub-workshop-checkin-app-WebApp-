@@ -13,14 +13,19 @@ import { PaymentService } from "@/services/modules/payment/payment.service";
 import { RegistrationService } from "@/services/modules/registration/registration.service";
 import { WorkshopService } from "@/services/modules/workshop/workshop.service";
 import type { StoredWorkshopFlow } from "@/lib/my-workshops-store";
-import type { PaymentDTO, RegistrationDTO, ReservationResponse, WorkshopResponse } from "@/types";
+import type {
+  PaymentDTO,
+  RegistrationDTO,
+  ReservationResponse,
+  WorkshopResponse,
+} from "@/types";
 import { useMyWorkshops } from "./my-workshops-provider";
 
 interface WorkshopDetailClientProps {
   workshopId: number;
 }
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | Date | null) {
   if (!value) {
     return "N/A";
   }
@@ -39,7 +44,9 @@ function createIdempotencyKey(prefix: string) {
   return `${prefix}-${Date.now()}`;
 }
 
-function isActiveReservation(reservation: ReservationResponse | null | undefined) {
+function isActiveReservation(
+  reservation: ReservationResponse | null | undefined,
+) {
   if (!reservation?.expiresAt) return false;
 
   const expiresAt = new Date(reservation.expiresAt).getTime();
@@ -56,7 +63,9 @@ export function WorkshopDetailClient({
   const { getWorkshopFlowByWorkshopId, upsertWorkshopFlow } = useMyWorkshops();
   const canRegisterOrPay = user?.role === "student";
   const [workshop, setWorkshop] = useState<WorkshopResponse | null>(null);
-  const [registration, setRegistration] = useState<RegistrationDTO | null>(null);
+  const [registration, setRegistration] = useState<RegistrationDTO | null>(
+    null,
+  );
   const [reservation, setReservation] = useState<ReservationResponse | null>(
     null,
   );
@@ -91,7 +100,9 @@ export function WorkshopDetailClient({
           ]);
 
         if (workshopResponse.error || !workshopResponse.data) {
-          throw new Error(workshopResponse.error?.message || "Workshop not found.");
+          throw new Error(
+            workshopResponse.error?.message || "Workshop not found.",
+          );
         }
 
         if (registrationsResponse.error) {
@@ -105,16 +116,22 @@ export function WorkshopDetailClient({
         const registrations = registrationsResponse.data?.items ?? [];
         const payments = paymentsResponse.data?.items ?? [];
         const currentRegistration =
-          registrations.find((item) => Number(item.workshop_id) === workshopId) ??
+          registrations.find(
+            (item) => Number(item.workshop_id) === workshopId,
+          ) ??
           cachedFlow?.registration ??
           null;
         const currentPayment = currentRegistration
-          ? payments.find((item) => item.registration_id === currentRegistration.id) ?? null
-          : cachedFlow?.payment ?? null;
+          ? (payments.find(
+              (item) => item.registration_id === currentRegistration.id,
+            ) ?? null)
+          : (cachedFlow?.payment ?? null);
         const currentReservation =
-          currentRegistration || currentPayment || !isActiveReservation(cachedFlow?.reservation)
+          currentRegistration ||
+          currentPayment ||
+          !isActiveReservation(cachedFlow?.reservation)
             ? null
-            : cachedFlow?.reservation ?? null;
+            : (cachedFlow?.reservation ?? null);
 
         setWorkshop(workshopResponse.data);
         setRegistration(currentRegistration);
@@ -263,7 +280,9 @@ export function WorkshopDetailClient({
       if (!registrationsResponse.error) {
         const registrations = registrationsResponse.data?.items ?? [];
         const currentRegistration =
-          registrations.find((item) => Number(item.workshop_id) === workshopId) ?? null;
+          registrations.find(
+            (item) => Number(item.workshop_id) === workshopId,
+          ) ?? null;
         nextRegistration = currentRegistration;
         setRegistration(currentRegistration);
       }
@@ -279,7 +298,9 @@ export function WorkshopDetailClient({
       toast.success("Payment completed.");
     } catch (paymentError) {
       toast.error(
-        paymentError instanceof Error ? paymentError.message : "Payment failed.",
+        paymentError instanceof Error
+          ? paymentError.message
+          : "Payment failed.",
       );
     } finally {
       setIsPaying(false);
@@ -316,10 +337,28 @@ export function WorkshopDetailClient({
                 </p>
                 <CardTitle className="text-3xl">{workshop.title}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <p className="text-muted-foreground">
                   {workshop.description || "No description available."}
                 </p>
+
+                {workshop.room?.map_url ? (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Room Map</p>
+                      <p className="font-medium">
+                        {workshop.room.name || `Room #${workshop.room.id}`}
+                      </p>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-border bg-muted">
+                      <img
+                        src={workshop.room.map_url}
+                        alt={workshop.room.name || `Room map for workshop #${workshop.id}`}
+                        className="h-auto w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -364,7 +403,8 @@ export function WorkshopDetailClient({
                     </Button>
                     {!canRegisterOrPay ? (
                       <p className="text-sm text-muted-foreground">
-                        Đăng ký workshop chỉ khả dụng với tài khoản vai trò <strong>student</strong>.
+                        Đăng ký workshop chỉ khả dụng với tài khoản vai trò{" "}
+                        <strong>student</strong>.
                       </p>
                     ) : null}
                   </div>
@@ -384,7 +424,9 @@ export function WorkshopDetailClient({
               </CardContent>
             </Card>
 
-            {workshopStatus === "registered" && (registration || reservation) && !payment ? (
+            {workshopStatus === "registered" &&
+            (registration || reservation) &&
+            !payment ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Payment</CardTitle>

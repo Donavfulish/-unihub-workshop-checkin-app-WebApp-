@@ -18,7 +18,9 @@ import {
 interface MyWorkshopsContextValue {
   items: StoredWorkshopFlow[];
   upsertWorkshopFlow: (item: StoredWorkshopFlow) => void;
-  getWorkshopFlowByWorkshopId: (workshopId: number) => StoredWorkshopFlow | undefined;
+  getWorkshopFlowByWorkshopId: (
+    workshopId: number,
+  ) => StoredWorkshopFlow | undefined;
 }
 
 const MyWorkshopsContext = createContext<MyWorkshopsContextValue | null>(null);

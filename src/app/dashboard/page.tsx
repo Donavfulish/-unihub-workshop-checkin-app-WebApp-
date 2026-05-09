@@ -14,7 +14,7 @@ import type { PaymentDTO, RegistrationDTO } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
 import { useMyWorkshops } from "@/components/my-workshops-provider";
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | Date | null) {
   if (!value) {
     return "N/A";
   }
@@ -72,45 +72,45 @@ export default function DashboardPage() {
     void loadData();
   }, [accessToken]);
 
-  const items = useMemo(
-    () => {
-      const backendItems = registrations
-        .filter((item) => item.workshop)
-        .map((registration) => {
-          const payment =
-            payments.find((item) => item.registration_id === registration.id) ??
-            null;
+  const items = useMemo(() => {
+    const backendItems = registrations
+      .filter((item) => item.workshop)
+      .map((registration) => {
+        const payment =
+          payments.find((item) => item.registration_id === registration.id) ??
+          null;
 
-          return {
-            registration,
-            payment,
-            reservation: null,
-            workshop: registration.workshop!,
-            status:
-              payment || registration.status === "Paid" ? "Paid" : "Confirmed",
-            qrCode:
-              payment?.registration?.qr_code_hash ??
-              registration.qr_code_hash ??
-              null,
-          };
-        });
+        return {
+          registration,
+          payment,
+          reservation: null,
+          workshop: registration.workshop!,
+          status:
+            payment || registration.status === "Paid" ? "Paid" : "Confirmed",
+          qrCode:
+            payment?.registration?.qr_code_hash ??
+            registration.qr_code_hash ??
+            null,
+        };
+      });
 
-      const activeReservations = workshopFlows
-        .filter((flow) => flow.reservation && !flow.registration && !flow.payment)
-        .filter((flow) => !backendItems.some((item) => item.workshop.id === flow.workshop.id))
-        .map((flow) => ({
-          registration: null,
-          payment: null,
-          reservation: flow.reservation,
-          workshop: flow.workshop,
-          status: "Held",
-          qrCode: null,
-        }));
+    const activeReservations = workshopFlows
+      .filter((flow) => flow.reservation && !flow.registration && !flow.payment)
+      .filter(
+        (flow) =>
+          !backendItems.some((item) => item.workshop.id === flow.workshop.id),
+      )
+      .map((flow) => ({
+        registration: null,
+        payment: null,
+        reservation: flow.reservation,
+        workshop: flow.workshop,
+        status: "Held",
+        qrCode: null,
+      }));
 
-      return [...activeReservations, ...backendItems];
-    },
-    [payments, registrations, workshopFlows],
-  );
+    return [...activeReservations, ...backendItems];
+  }, [payments, registrations, workshopFlows]);
 
   const activeItem =
     items.find((item) => item.workshop.id === activeQrWorkshopId) ?? null;
@@ -170,13 +170,14 @@ export default function DashboardPage() {
               ) : items.length > 0 ? (
                 items.map((item) => (
                   <div
-                    key={item.registration.id}
+                    key={item.registration?.id ?? item.workshop.id}
                     className="flex flex-col gap-3 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="space-y-1">
                       <p className="font-medium">{item.workshop.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        Status: {item.status === "Held" ? "Đang giữ vé" : item.status}
+                        Status:{" "}
+                        {item.status === "Held" ? "Đang giữ vé" : item.status}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Start: {formatDateTime(item.workshop.start_time)}

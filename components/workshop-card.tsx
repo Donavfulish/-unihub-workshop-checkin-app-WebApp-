@@ -10,7 +10,7 @@ interface WorkshopCardProps {
   workshop: WorkshopResponse;
 }
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | Date | null) {
   if (!value) {
     return 'N/A'
   }
@@ -30,11 +30,11 @@ export function WorkshopCard({ workshop }: WorkshopCardProps) {
 
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 flex-shrink-0" />
+            <Clock className="h-4 w-4 shrink-0" />
             <span>{formatDateTime(workshop.start_time)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 flex-shrink-0" />
+            <Users className="h-4 w-4 shrink-0" />
             <span>
               {workshop.remaining_slots ?? 'N/A'} / {workshop.total_slots ?? 'N/A'} slots remaining
             </span>

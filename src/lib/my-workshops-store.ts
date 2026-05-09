@@ -15,7 +15,9 @@ export interface StoredWorkshopFlow {
   qrCode?: string | null;
 }
 
-function isActiveReservation(reservation?: ReservationResponse | null): boolean {
+function isActiveReservation(
+  reservation?: ReservationResponse | null,
+): boolean {
   if (!reservation?.expiresAt) return false;
 
   const expiresAt = new Date(reservation.expiresAt).getTime();
@@ -24,7 +26,9 @@ function isActiveReservation(reservation?: ReservationResponse | null): boolean 
   return expiresAt > Date.now();
 }
 
-function normalizeWorkshopFlow(item: StoredWorkshopFlow): StoredWorkshopFlow | null {
+function normalizeWorkshopFlow(
+  item: StoredWorkshopFlow,
+): StoredWorkshopFlow | null {
   if (!item?.workshop?.id) return null;
 
   const reservation = isActiveReservation(item.reservation)
@@ -50,7 +54,9 @@ export function readStoredWorkshopFlows(): StoredWorkshopFlow[] {
     const parsed = JSON.parse(raw) as StoredWorkshopFlow[];
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.map(normalizeWorkshopFlow).filter(Boolean) as StoredWorkshopFlow[];
+    return parsed
+      .map(normalizeWorkshopFlow)
+      .filter(Boolean) as StoredWorkshopFlow[];
   } catch {
     return [];
   }

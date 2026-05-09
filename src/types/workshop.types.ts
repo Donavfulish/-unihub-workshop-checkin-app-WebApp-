@@ -1,3 +1,5 @@
+import type { RoomResponse } from "./room.types";
+
 export interface WorkshopResponse {
   id: number;
   title: string;
@@ -5,10 +7,11 @@ export interface WorkshopResponse {
   fee?: number | string | null;
   total_slots?: number | null;
   remaining_slots?: number | null;
-  start_time?: string | null;
-  end_time?: string | null;
+  start_time?: Date | null;
+  end_time?: Date | null;
   room_id?: number | null;
   created_by?: string | null;
+  room?: RoomResponse | null;
 }
 
 export interface WorkshopsListResponse {
