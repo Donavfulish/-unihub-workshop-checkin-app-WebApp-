@@ -28,13 +28,15 @@ export interface PaymentListResponse {
 }
 
 export interface PaymentRequestBody {
-  registrationId: number;
+  registrationId?: number;
+  reservationId?: string;
   amount: number;
   idempotencyKey?: string;
 }
 
 export interface ProcessPaymentInput {
-  registrationId: number;
+  registrationId?: number;
+  reservationId?: string;
   amount: number;
   idempotencyKey?: string;
 }

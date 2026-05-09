@@ -1,7 +1,7 @@
 import { serviceRequest } from "@/services/modules/shared-request";
 import type { AuthRequestOptions } from "@/types/http";
 import type {
-  RegistrationDTO,
+  ReservationResponse,
   RegistrationListResponse,
   RegistrationRequestBody,
 } from "@/types";
@@ -13,7 +13,7 @@ export const RegistrationService = {
     serviceRequest<RegistrationListResponse>(`${BASE_PATH}/me`, "GET", options),
 
   create: (data: RegistrationRequestBody, options?: AuthRequestOptions) =>
-    serviceRequest<RegistrationDTO>(`${BASE_PATH}/`, "POST", {
+    serviceRequest<ReservationResponse>(`${BASE_PATH}/`, "POST", {
       ...options,
       body: data,
     }),

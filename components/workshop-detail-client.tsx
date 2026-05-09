@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { PaymentService } from "@/services/modules/payment/payment.service";
 import { RegistrationService } from "@/services/modules/registration/registration.service";
 import { WorkshopService } from "@/services/modules/workshop/workshop.service";
-import type { PaymentDTO, RegistrationDTO, WorkshopResponse } from "@/types";
+import type { PaymentDTO, RegistrationDTO, ReservationResponse, WorkshopResponse } from "@/types";
 import { useMyWorkshops } from "./my-workshops-provider";
 
 interface WorkshopDetailClientProps {
@@ -47,6 +47,9 @@ export function WorkshopDetailClient({
   const canRegisterOrPay = user?.role === "student";
   const [workshop, setWorkshop] = useState<WorkshopResponse | null>(null);
   const [registration, setRegistration] = useState<RegistrationDTO | null>(null);
+  const [reservation, setReservation] = useState<ReservationResponse | null>(
+    null,
+  );
   const [payment, setPayment] = useState<PaymentDTO | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,12 +136,12 @@ export function WorkshopDetailClient({
       return "paid";
     }
 
-    if (registration) {
+    if (registration || reservation) {
       return "registered";
     }
 
     return "not_registered";
-  }, [payment, registration]);
+  }, [payment, registration, reservation]);
 
   async function handleRegister() {
     if (!workshop) {
@@ -164,10 +167,14 @@ export function WorkshopDetailClient({
         throw new Error(response.error?.message || "Registration failed.");
       }
 
-      setRegistration(response.data);
+      setReservation(response.data);
       setPayment(null);
-      setQrCode(response.data.qr_code_hash ?? null);
-      toast.success("Registration created. Continue to payment.");
+      setQrCode(null);
+      toast.success(
+        `Đã giữ chỗ. Vui lòng thanh toán trước ${new Date(
+          response.data.expiresAt,
+        ).toLocaleTimeString()}.`,
+      );
     } catch (registerError) {
       toast.error(
         registerError instanceof Error
@@ -180,7 +187,7 @@ export function WorkshopDetailClient({
   }
 
   async function handlePay() {
-    if (!workshop || !registration) {
+    if (!workshop || (!registration && !reservation)) {
       return;
     }
 
@@ -193,7 +200,8 @@ export function WorkshopDetailClient({
       setIsPaying(true);
       const response = await PaymentService.create(
         {
-          registrationId: registration.id,
+          reservationId: reservation?.reservationId,
+          registrationId: registration?.id,
           amount,
           idempotencyKey: createIdempotencyKey("payment"),
         },
@@ -205,21 +213,20 @@ export function WorkshopDetailClient({
       }
 
       const paymentData = response.data;
-      const backendQrCode =
-        paymentData.registration?.qr_code_hash ??
-        registration.qr_code_hash ??
-        null;
+      const backendQrCode = paymentData.registration?.qr_code_hash ?? null;
 
       setPayment(paymentData);
-      setRegistration((current) =>
-        current
-          ? {
-              ...current,
-              status: paymentData.registration?.status ?? "Paid",
-              qr_code_hash: backendQrCode,
-            }
-          : current,
-      );
+      setReservation(null);
+      // Reload registrations to get the newly created registration row.
+      const registrationsResponse = await RegistrationService.listMine({
+        token: accessToken || undefined,
+      });
+      if (!registrationsResponse.error) {
+        const registrations = registrationsResponse.data?.items ?? [];
+        const currentRegistration =
+          registrations.find((item) => item.workshop_id === workshopId) ?? null;
+        setRegistration(currentRegistration);
+      }
       setQrCode(backendQrCode);
 
       toast.success("Payment completed.");
@@ -300,7 +307,7 @@ export function WorkshopDetailClient({
                   </div>
                 </div>
 
-                {!registration ? (
+                {!registration && !reservation ? (
                   <div className="space-y-2">
                     <Button
                       onClick={handleRegister}
@@ -314,6 +321,14 @@ export function WorkshopDetailClient({
                       </p>
                     ) : null}
                   </div>
+                ) : reservation ? (
+                  <div className="rounded-md border border-border p-4">
+                    <p className="font-medium">Slot reserved</p>
+                    <p className="text-sm text-muted-foreground">
+                      Expires at{" "}
+                      {new Date(reservation.expiresAt).toLocaleTimeString()}
+                    </p>
+                  </div>
                 ) : (
                   <div className="rounded-md border border-border p-4">
                     <p className="font-medium">Registration created</p>
@@ -322,7 +337,7 @@ export function WorkshopDetailClient({
               </CardContent>
             </Card>
 
-            {workshopStatus === "registered" && registration && !payment ? (
+            {workshopStatus === "registered" && (registration || reservation) && !payment ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Payment</CardTitle>

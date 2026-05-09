@@ -26,6 +26,13 @@ export interface RegistrationRequestBody {
   idempotencyKey?: string;
 }
 
+export interface ReservationResponse {
+  reservationId: string;
+  workshopId: number;
+  studentId: string;
+  expiresAt: string;
+}
+
 export interface RegisterUserInput {
   workshopId: number;
   idempotencyKey?: string;
